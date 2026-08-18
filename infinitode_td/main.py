@@ -663,28 +663,27 @@ class Game:
             self.selected_tower_type = None
             self.selected_tower = None
     
-    def check_ui_click(self, pos: Tuple[int, int]) -> bool:
-        # Check tower selection buttons
+    def check_ui_click(self, pos):
         ui_start_x = self.config.screen_width - 200
-        if pos[0] >= ui_start_x:
+        
+        if pos[0] >= ui_start_x and pos[1] >= 100:
             button_y = 100
             for tower_type in TowerType:
                 if button_y <= pos[1] <= button_y + 50:
-                    if tower_type != TowerType.MINER or True:  # Allow miners
-                        self.selected_tower_type = tower_type
-                        self.selected_tower = None
-                        return True
+                    self.selected_tower_type = tower_type
+                    self.selected_tower = None
+                    return True
                 button_y += 60
             
             # Check upgrade button
             if self.selected_tower:
-                if 100 <= pos[1] <= 150:
+                upgrade_y = button_y + 20
+                if upgrade_y <= pos[1] <= upgrade_y + 40:
                     self.upgrade_selected_tower()
                     return True
-            
-            return True
+        
         return False
-    
+
     def try_place_tower(self, grid_x: int, grid_y: int):
         if not (0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT):
             return
@@ -893,6 +892,41 @@ class Game:
         
         pygame.display.flip()
     
+
+    def handle_menu_click(self, pos):
+        # Handle clicks on menu buttons - check if clicked on start button
+        start_btn = pygame.Rect(self.config.screen_width // 2 - 150, 250, 300, 60)
+        if start_btn.collidepoint(pos):
+            self.start_game()
+    
+    def handle_research_click(self, pos):
+        # Handle clicks in research screen - purchase research nodes or return
+        # Check return button first
+        return_btn = pygame.Rect(self.config.screen_width // 2 - 150, 
+                                self.config.screen_height - 100, 300, 50)
+        if return_btn.collidepoint(pos):
+            self.state = GameState.PLAYING
+            return
+        
+        # Check research nodes
+        y_offset = 180
+        for node_id, node in self.research_manager.nodes.items():
+            node_rect = pygame.Rect(100, y_offset, self.config.screen_width - 200, 60)
+            if node_rect.collidepoint(pos):
+                if node.unlocked and not node.purchased:
+                    if self.research_manager.research_points >= node.cost:
+                        self.research_manager.purchase_node(node_id)
+                break
+            y_offset += 70
+    
+    def handle_game_over_click(self, pos):
+        # Handle clicks on game over screen - returns to menu
+        self.state = GameState.MENU
+    
+    def start_game(self):
+        self.reset_game()
+        self.state = GameState.PLAYING
+
     def draw_menu(self):
         title = self.font_large.render("INFINITODE TD", True, COLORS['text_primary'])
         title_rect = title.get_rect(center=(self.config.screen_width // 2, 200))
